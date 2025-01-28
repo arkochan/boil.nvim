@@ -2,9 +2,9 @@
 local utils = require("boil.utils")
 local M = {}
 
-function M.generate_file(file_name, file_type, template_name, config)
+function M.generate_file(file_name_base, file_ext, template_trigger, config)
 	-- Expand braces in the file name
-	local file_names = utils.expand_braces(file_name)
+	local file_names = utils.expand_braces(file_name_base)
 
 	-- Get the current file path (for dynamic path computation)
 	local current_file_path = vim.api.nvim_buf_get_name(0)
@@ -15,7 +15,7 @@ function M.generate_file(file_name, file_type, template_name, config)
 		local file_type_config
 		for _, ft in ipairs(config.file_types) do
 			for _, ext in ipairs(ft.extensions) do
-				if file_type == ext then
+				if file_ext == ext then
 					file_type_config = ft
 					break
 				end
@@ -26,14 +26,14 @@ function M.generate_file(file_name, file_type, template_name, config)
 		end
 
 		if not file_type_config then
-			vim.notify("Error: File type '" .. file_type .. "' is not configured.", vim.log.levels.ERROR)
+			vim.notify("Error: File type '" .. file_ext .. "' is not configured.", vim.log.levels.ERROR)
 			return
 		end
 
 		-- Find the template
 		local template
 		for _, t in ipairs(file_type_config.templates) do
-			if t.trigger == template_name then
+			if t.trigger == template_trigger then
 				template = t
 				break
 			end
@@ -42,7 +42,7 @@ function M.generate_file(file_name, file_type, template_name, config)
 		-- Validate template
 		if not template then
 			vim.notify(
-				"Error: Template '" .. template_name .. "' not found for file type '" .. file_type .. "'.",
+				"Error: Template '" .. template_trigger .. "' not found for file type '" .. file_ext .. "'.",
 				vim.log.levels.ERROR
 			)
 			return
@@ -50,18 +50,51 @@ function M.generate_file(file_name, file_type, template_name, config)
 
 		-- Compute the path
 		local path = template.path
-		if type(path) == "function" then
-			path = path(current_file_path)
+		if not path then
+			vim.notify("Error: No path found for template '" .. template_trigger .. "'.", vim.log.levels.ERROR)
+		end
+		if type(template.path) == "function" then
+			local success, result = pcall(template.path, current_file_path)
+			if success then
+				path = result
+			else
+				vim.notify(
+					"Error: Failed to execute path function for template '" .. template_trigger .. "'.",
+					vim.log.levels.ERROR
+				)
+				return
+			end
+		else
+			path = template.path
 		end
 
-		-- Compute the filename
-		local filename = name
+		-- if type(path) == "function" then
+		-- 	path = path(current_file_path)
+		-- end
+
+		-- Compute the filename that'd be used to save the file
+		local filename = name .. "." .. file_ext
+		-- notify name and filename as logs
+		-- check if exists and then if functions or just assign the filename
 		if template.filename then
-			filename = template.filename(name, file_type)
+			if type(template.filename) == "function" then
+				local success, result = pcall(template.filename, name, file_ext)
+				if success then
+					filename = result
+				else
+					vim.notify(
+						"Error: Failed to execute filename function for template '" .. template_trigger .. "'.",
+						vim.log.levels.ERROR
+					)
+					return
+				end
+			else
+				filename = template.filename
+			end
 		end
 
 		-- Replace [FILE_NAME] in the path and snippet
-		path = utils.replace(path, "[FILE_NAME]", filename)
+		-- path = utils.replace(path, "[FILE_NAME]", filename)
 
 		-- Get the snippet
 		local snippet = template.snippet
@@ -78,19 +111,26 @@ function M.generate_file(file_name, file_type, template_name, config)
 					)
 					return
 				end
+				-- Replace all instances of the placeholder in the snippet with the result
 				snippet = utils.replace(snippet, placeholder, result)
 			end
 		end
 
 		-- Replace [FILE_NAME] in the snippet
-		snippet = utils.replace(snippet, "[FILE_NAME]", filename)
+		-- snippet = utils.replace(snippet, "[FILE_NAME]", filename)
 
 		-- Create directories if they don't exist
+
 		local dir = vim.fn.fnamemodify(path, ":h")
 		vim.fn.mkdir(dir, "p")
 
+		local file_path = vim.fn.fnamemodify(dir .. "/" .. filename, ":p")
+		-- log the file path
+		-- dir =
+		-- filename =
+
 		-- Write the snippet to the file
-		local file = io.open(path, "w")
+		local file = io.open(file_path, "w")
 		if file then
 			file:write(snippet)
 			file:close()
