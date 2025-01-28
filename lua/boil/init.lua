@@ -1,12 +1,11 @@
 -- lua/boil/init.lua
-local config = require("boil.config")
 local core = require("boil.core")
 
 local M = {}
 
 function M.setup(user_config)
 	-- Merge user config with defaults
-	M.config = vim.tbl_deep_extend("force", config.defaults, user_config or {})
+	M.config = user_config
 end
 
 -- Function to extract template name and file name from user input
