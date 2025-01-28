@@ -35,7 +35,7 @@ local function extract_handler(input, is_interactive)
 		template_name = nil
 	end
 
-	-- Infer file type from the file name
+	-- Infer file type from argument
 	local file_type = file_name:match("%.(%w+)$")
 	if not file_type then
 		-- Infer file type from the last active buffer
@@ -71,6 +71,7 @@ local function extract_handler(input, is_interactive)
 	end
 
 	-- Generate the file(s)
+	--
 	core.generate_file(file_name, file_type, template_name, M.config)
 end
 
