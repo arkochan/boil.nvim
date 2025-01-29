@@ -103,7 +103,16 @@ function M.generate_file(file_name_base, file_ext, template_trigger, config)
 		for _, func in ipairs(file_type_config.functions) do
 			local placeholder = "[" .. func.keyword .. "]"
 			if snippet:find(placeholder) then
-				local success, result = pcall(func.execute, filename)
+				---  (file_name_arg, calculated_path, last_active_buffer_path, last_active_buffer_extension)
+				---  convert this fn argument into a table
+
+				local placeholder_fn_arg = {
+					file_name = name,
+					file_path = path,
+					last_active_buffer_path = current_file_path,
+					file_extension = file_ext,
+				}
+				local success, result = pcall(func.execute, placeholder_fn_arg)
 				if not success then
 					vim.notify(
 						"Error: Failed to execute function for placeholder '" .. placeholder .. "'.",

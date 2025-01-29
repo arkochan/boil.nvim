@@ -10,25 +10,41 @@ Using `lazy.nvim`:
 
 ```lua
 return {
-  "arkochan/boil.nvim",
+  -- "arkochan/boil.nvim",
+  "~/boil.nvim/", -- Path to your local plugin
+  dev = true,
+  -- config = function()
+  --   require("boil").setup({})
+  -- end,
   opts = {
     file_types = {
       {
         extensions = { "tsx", "ts" }, -- TypeScript extensions
         default_template = "component", -- If template arg not provided this is considered by default
-        functions = { -- The string substitution function to replace [KEYWORD]s
+        functions = { -- The string substituition function to replace [KEYWORD]s
           {
             keyword = "REACT_IMPORT", -- When found [REACT_IMPORT]
-            execute = function(file_name_arg, calculated_path, last_active_buffer_path, last_active_buffer_extension) -- substitute with this
+            execute = function(args)
+              -- The fn argument should rather be given in a table as substitute function arguments
+              -- user would use necessary args
+              -- this would be called after path has been calculated
+              -- :Boil file_name_arg
               return "import React from 'react';"
             end,
           },
           {
             keyword = "COMPONENT_NAME", -- When found [COMPONENT_NAME]
-            execute = function(file_name_arg, calculated_path, last_active_buffer_path, last_active_buffer_extension) -- This is executed and substitutes the [COMPONENT_NAME]
-              return file_name_arg:gsub("(%l)(%w*)", function(first, rest)
-                return first:upper() .. rest
-              end)
+
+            -- placeholder_fn_arg = {
+            -- 	file_name = name,
+            -- 	file_path = path,
+            -- 	last_active_buffer_path = current_file_path,
+            -- 	file_extension = file_ext,
+            execute = function(args)
+              -- vim.notify(args.file_name_arg)
+              -- vim.notify(args)
+              local file_name_arg_first_char_capitalized = args.file_name:gsub("^%l", string.upper)
+              return file_name_arg_first_char_capitalized
             end,
           },
         },
@@ -36,7 +52,18 @@ return {
           {
             trigger = "component", -- First optional arg,  When :Boil component ... This template is triggered
             path = "src/components/",
+            -- function(current_file_path) -- To determine the file path this fn is called with last active buffer's file path
+            -- -- path can also be a string literal
+            --
+            -- -- Example: Place the component in a subdirectory based on the current file's directory
+            -- -- local dir = vim.fn.fnamemodify(current_file_path, ":h") .. "/components"
+            -- return "src/components/"
+            -- end,
             filename = function(name, extension) -- What is set as the filename while creating the file
+              -- extension is the last active buffer's extension
+              -- if nothing is assigned name .. extension is assigned by default
+              --
+              -- Example: Convert the name to PascalCase
               return name:gsub("(%l)(%w*)", function(first, rest)
                 return first:upper() .. rest .. "." .. extension
               end)
@@ -59,7 +86,7 @@ return {
         functions = {
           {
             keyword = "GO_PACKAGE_NAME",
-            execute = function(file_name_arg, calculated_path, last_active_buffer_path, last_active_buffer_extension)
+            execute = function(args)
               -- Get the current buffer's lines
               local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 
@@ -112,8 +139,8 @@ return {
           },
           {
             keyword = "FILE_NAME", -- Default function for file name
-            execute = function(file_name_arg, calculated_path, last_active_buffer_path, last_active_buffer_extension)
-              return file_name_arg
+            execute = function(args)
+              return args.file_name .. ".go"
             end,
           },
         },
@@ -125,6 +152,9 @@ return {
               local dir = vim.fn.fnamemodify(current_file_path, ":h") .. "/functions"
               return dir
             end,
+            -- filename = function(name, extension)  -- This will generate default outcome
+            --   return name .. extension
+            -- end,
             snippet = "[GO_PACKAGE_NAME]\n\nfunc [FILE_NAME]() {\n    // Function implementation\n}",
           },
           {
