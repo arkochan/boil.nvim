@@ -10,12 +10,7 @@ Using `lazy.nvim`:
 
 ```lua
 return {
-  -- "arkochan/boil.nvim",
-  "~/boil.nvim/", -- Path to your local plugin
-  dev = true,
-  -- config = function()
-  --   require("boil").setup({})
-  -- end,
+  "arkochan/boil.nvim",
   opts = {
     file_types = {
       {
@@ -25,11 +20,12 @@ return {
           {
             keyword = "REACT_IMPORT", -- When found [REACT_IMPORT]
             execute = function(args)
+              print("args", args)
               -- The fn argument should rather be given in a table as substitute function arguments
               -- user would use necessary args
               -- this would be called after path has been calculated
               -- :Boil file_name_arg
-              return "import React from 'react';"
+              return "import React from 'react';\nimport {cn} from '@/lib/utils/cn';"
             end,
           },
           {
@@ -43,7 +39,7 @@ return {
             execute = function(args)
               -- vim.notify(args.file_name_arg)
               -- vim.notify(args)
-              local file_name_arg_first_char_capitalized = args.file_name:gsub("^%l", string.upper)
+              local file_name_arg_first_char_capitalized = args.file_name:gsub("^.", string.upper)
               return file_name_arg_first_char_capitalized
             end,
           },
@@ -68,7 +64,7 @@ return {
                 return first:upper() .. rest .. "." .. extension
               end)
             end,
-            snippet = "[REACT_IMPORT]\n\nexport default function [COMPONENT_NAME]() {\n  return <div>[COMPONENT_NAME]</div>;\n}",
+            snippet = '[REACT_IMPORT]\n\nexport default function [COMPONENT_NAME]({className}:{className?:string}) {\n  return (<div className = {cn("",className)} >[COMPONENT_NAME]</div>);\n}',
           },
           {
             trigger = "dict",
@@ -159,6 +155,9 @@ return {
           },
           {
             trigger = "struct",
+            -- here file namw would be considered name_arg.go // as go would be detected at last
+            -- name_arg ->    :Boil <template_name> <name_arg>
+            -- name_arg can be cosidered as basea file name
             path = "src/go/",
             snippet = "[GO_PACKAGE_NAME]\n\ntype [FILE_NAME] struct {\n    // Struct fields\n}",
           },
